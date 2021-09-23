@@ -1,0 +1,1 @@
+{"admin": "admin", "loki": "koki", "vodka": "pivo", "pupa": "lupa"}
