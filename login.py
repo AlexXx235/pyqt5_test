@@ -1,12 +1,19 @@
-import sys, json
+import sys
+import json
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QCheckBox, QLineEdit, QPushButton, QMessageBox
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
+from registration import SignUpWindow
+
 
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.initializeUI()
+
+    def initializeUI(self):
+        self.setWindowTitle("Login")
+        self.setGeometry(100, 100, 400, 400)
         self.displayTitle()
         self.displayLoginForm()
         self.displayPasswordForm()
@@ -14,10 +21,6 @@ class LoginWindow(QWidget):
         self.displayLoginButton()
         self.displaySignUpLabel()
         self.displaySignUpButton()
-
-    def initializeUI(self):
-        self.setWindowTitle("Login")
-        self.setGeometry(100, 100, 400, 400)
         self.show()
 
     def displayTitle(self):
@@ -106,7 +109,21 @@ class LoginWindow(QWidget):
     def displaySignUpButton(self):
         self.sign_up_btn = QPushButton("Sign up", self)
         self.sign_up_btn.setGeometry(170, 350, 60, 30)
+        self.sign_up_btn.clicked.connect(self.clickSignUp)
         self.sign_up_btn.show()
+
+    def clickSignUp(self):
+        self.registration_dialog = SignUpWindow()
+        self.registration_dialog.show()
+
+    def closeEvent(self, event):
+        quit_decision = QMessageBox.question(self, "Do you want to quit the program?",
+                                             "Are you sure to quit?",
+                                             QMessageBox.Yes | QMessageBox.No)
+        if quit_decision == QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()
 
 
 if __name__ == '__main__':
