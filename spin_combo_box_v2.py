@@ -67,7 +67,6 @@ class BillForm(QWidget):
         sender.label.setText(f'{cost}$')
 
         children = self.findChildren(QLabel, QRegExp('meal_cost_*'))
-        print(children[0].text())
         costs = [int(child.text()[:-1]) for child in children]
         total_cost = sum(costs)
         self.total_cost.setText(f'Total: {total_cost}$')
