@@ -4,9 +4,9 @@ import random
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QDockWidget, QToolBar,
                              QLabel, QStatusBar, QTextEdit, QDesktopWidget, QFileDialog, QSizePolicy,
                              QMessageBox, QWidget, QPushButton, QVBoxLayout)
-from PyQt5.QtCore import Qt
-from PyQt5.Qt import QSize
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtGui import QIcon, QPixmap, QTransform, QPainter
+from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 
 
 class PhotoEditor(QMainWindow):
@@ -19,9 +19,9 @@ class PhotoEditor(QMainWindow):
         self.setWindowTitle('Photo Editor')
         self.centerMainWindow()
         self.createImageWidgets()
+        self.createDockWidget()
         self.createMenu()
         self.createToolBar()
-        self.createDockWidget()
         self.createStatusBar()
         self.show()
 
@@ -87,12 +87,12 @@ class PhotoEditor(QMainWindow):
         flip_act = QAction(QIcon(self.getIconPath()), 'Flip', self)
         flip_act.setShortcut('Ctrl+F')
         flip_act.setStatusTip('Flip image')
-        flip_act.triggered.connect(self.flipImage)
+        flip_act.triggered.connect(self.flipImageVertical)
 
         resize_act = QAction(QIcon(self.getIconPath()), 'Resize', self)
         resize_act.setShortcut('Ctrl+R')
         resize_act.setStatusTip('Resize image')
-        resize_act.triggered.connect(self.resizeImage)
+        resize_act.triggered.connect(self.resizeImageHalf)
 
         clear_image_act = QAction(QIcon(self.getIconPath()), 'Clear Image', self)
         clear_image_act.setShortcut('Ctrl+C')
@@ -104,15 +104,8 @@ class PhotoEditor(QMainWindow):
         edit_menu.addAction(resize_act)
         edit_menu.addAction(clear_image_act)
 
-        # View menu actions
-        tools_show_act = QAction(QIcon(self.getIconPath()), 'Edit image tools', self)
-        tools_show_act.setCheckable(True)
-        tools_show_act.setShortcut('Ctrl+T')
-        tools_show_act.setStatusTip('Show/Hide dock widget')
-        tools_show_act.triggered.connect(self.changeDockWidgetState)
-
         # Add actions to view menu
-        view_menu.addAction(tools_show_act)
+        view_menu.addAction(self.tools_show_act)
 
     def createToolBar(self):
         # Create toolbar and actions
@@ -180,7 +173,7 @@ class PhotoEditor(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
 
         # Handles the visibility of the dock widget
-        self.toggle_dock_visibility = self.dock_widget.toggleViewAction()
+        self.tools_show_act = self.dock_widget.toggleViewAction()
 
         # Add dock widget to main window
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
@@ -205,21 +198,6 @@ class PhotoEditor(QMainWindow):
                                     "Unable to open image.", QMessageBox.Ok)
         self.print_act.setEnabled(True)
 
-    def rotateImage90(self):
-        pass
-
-    def rotateImage180(self):
-        pass
-
-    def flipImageHorizontal(self):
-        pass
-
-    def flipImageVertical(self):
-        pass
-
-    def resizeImageHalf(self):
-        pass
-
     def saveImage(self):
         image_file, _ = QFileDialog.getSaveFileName(self, "Save Image", "./images/",
                                                     "PNG (*.png)")
@@ -230,16 +208,76 @@ class PhotoEditor(QMainWindow):
                                     "Unable to save image.", QMessageBox.Ok)
 
     def printImage(self):
-        pass
+        printer = QPrinter()
+        printer.setOutputFormat(QPrinter.NativeFormat)
 
-    def flipImage(self):
-        pass
-
-    def resizeImage(self):
-        pass
+        print_dialog = QPrintDialog(printer)
+        if print_dialog.exec_() == QPrintDialog.Accepted:
+            painter = QPainter()
+            painter.begin(printer)
+            rect = QRect(painter.viewport())
+            size = self.image_label.pixmap().size()
+            size.scale(rect.size(), Qt.KeepAspectRatio)
+            painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+            painter.setWindow(self.image_label.pixmap().rect())
+            # Scale the image_label to fit the rect source (0, 0)
+            painter.drawPixmap(0, 0, self.image_label.pixmap())
+            # End painting
+            painter.end()
 
     def clearImage(self):
-        pass
+        self.image_label.clear()
+        self.image = QPixmap()
+
+    def rotateImage90(self):
+        if not self.image.isNull():
+            transform90 = QTransform().rotate(90)
+            pixmap = QPixmap(self.image)
+            rotated = pixmap.transformed(transform90, mode=Qt.SmoothTransformation)
+            self.image_label.setPixmap(rotated.scaled(self.image_label.size(),
+                                                      Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.image = QPixmap(rotated)
+            self.image_label.repaint()  # repaint the child widget
+
+    def rotateImage180(self):
+        if not self.image.isNull():
+            rotate180 = QTransform().rotate(180)
+            pixmap = QPixmap(self.image)
+            rotated = pixmap.transformed(rotate180, mode=Qt.SmoothTransformation)
+            self.image_label.setPixmap(rotated.scaled(self.image_label.size(), Qt.KeepAspectRatio,
+                                                      Qt.SmoothTransformation))
+            self.image = rotated
+            self.image_label.repaint()
+
+    def flipImageVertical(self):
+        if self.image.isNull() == False:
+            flip_v = QTransform().scale(-1, 1)
+            pixmap = QPixmap(self.image)
+            flipped = pixmap.transformed(flip_v)
+            self.image_label.setPixmap(flipped.scaled(self.image_label.size(),
+                                                      Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.image = QPixmap(flipped)
+            self.image_label.repaint()
+
+    def flipImageHorizontal(self):
+        if self.image.isNull() == False:
+            flip_h = QTransform().scale(1, -1)
+            pixmap = QPixmap(self.image)
+            flipped = pixmap.transformed(flip_h)
+            self.image_label.setPixmap(flipped.scaled(self.image_label.size(),
+                                                      Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.image = QPixmap(flipped)
+            self.image_label.repaint()
+
+    def resizeImageHalf(self):
+        if self.image.isNull() == False:
+            resize = QTransform().scale(0.5, 0.5)
+            pixmap = QPixmap(self.image)
+            resized = pixmap.transformed(resize)
+            self.image_label.setPixmap(resized.scaled(self.image_label.size(),
+                                                      Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.image = QPixmap(resized)
+            self.image_label.repaint()
 
     def changeDockWidgetState(self):
         pass
@@ -247,5 +285,6 @@ class PhotoEditor(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_DontShowIconsInMenus, True)
     window = PhotoEditor()
     sys.exit(app.exec_())
