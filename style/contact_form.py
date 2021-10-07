@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QWidget, QTabWidget, QRadioButton, QHBoxLayout,
-                             QVBoxLayout, QLabel, QLineEdit, QGroupBox)
+                             QVBoxLayout, QLabel, QLineEdit, QGroupBox, QButtonGroup)
 
 
 class ContactForm(QWidget):
